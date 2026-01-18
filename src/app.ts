@@ -2,9 +2,7 @@ export function initApp() {
   const app = document.getElementById('app');
   if (!app) return;
 
-  // Telegram WebApp
   const tg = (window as any).Telegram?.WebApp;
-
   if (tg) {
     tg.ready();
     tg.expand();
@@ -13,14 +11,32 @@ export function initApp() {
   }
 
   app.innerHTML = `
-    <div class="screen">
-      <h1>AI CAM</h1>
-      <button id="openCam">📸 Камера</button>
+    <div class="camera-root">
+      <video id="video" autoplay playsinline muted></video>
+
+      <div class="controls">
+        <button id="shoot">●</button>
+      </div>
     </div>
   `;
 
-  const btn = document.getElementById('openCam');
-  btn?.addEventListener('click', () => {
-    alert('Следующий шаг — подключаем камеру 📷');
+  const video = document.getElementById('video') as HTMLVideoElement;
+
+  navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: 'environment',
+      aspectRatio: 9 / 16,
+      width: { ideal: 1080 },
+      height: { ideal: 1920 }
+    },
+    audio: false
+  })
+  .then(stream => {
+    video.srcObject = stream;
+    video.play();
+  })
+  .catch(err => {
+    alert('Нет доступа к камере');
+    console.error(err);
   });
 }
