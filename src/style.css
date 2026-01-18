@@ -1,50 +1,56 @@
-html, body {
+* {
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
   height: 100%;
   background: black;
   overflow: hidden;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 #app {
+  width: 100%;
   height: 100%;
 }
 
-.camera-root {
+/* VIDEO */
+video {
   position: fixed;
   inset: 0;
-  display: flex;
-  justify-content: center;
-  background: black;
-}
-
-/* 9:16 контейнер */
-.camera-root::before {
-  content: '';
+  width: 100%;
   height: 100%;
-  aspect-ratio: 9 / 16;
-}
-
-video {
-  position: absolute;
-  height: 100%;
-  aspect-ratio: 9 / 16;
   object-fit: cover;
   background: black;
 }
 
+/* CONTROLS */
 .controls {
-  position: absolute;
-  bottom: 32px;
+  position: fixed;
+  bottom: 40px;
+  width: 100%;
   display: flex;
   justify-content: center;
-  width: 100%;
+  gap: 40px;
+  z-index: 10;
 }
 
-#shoot {
-  width: 72px;
-  height: 72px;
+.btn {
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
-  border: 4px solid white;
+  border: none;
+  font-size: 24px;
+  color: white;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(10px);
+}
+
+.capture {
+  width: 80px;
+  height: 80px;
   background: red;
 }
