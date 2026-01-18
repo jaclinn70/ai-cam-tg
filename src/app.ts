@@ -22,19 +22,38 @@ export function initApp() {
 
   let stream: MediaStream | null = null;
   let facingMode: 'user' | 'environment' = 'environment';
+  let initialized = false;
 
   async function startCamera() {
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
+    try {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+      }
+
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode },
+        audio: false
+      });
+
+      video.srcObject = stream;
+
+      await video.play();
+    } catch (e) {
+      console.error('Camera error', e);
     }
+  }
 
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode },
-      audio: false
-    });
+  // 🔑 FIX for Telegram Mobile
+  async function initCameraWithRetry() {
+    await startCamera();
 
-    video.srcObject = stream;
-    await video.play();
+    // Telegram Mobile часто требует повтор
+    if (!initialized) {
+      initialized = true;
+      setTimeout(() => {
+        startCamera();
+      }, 300);
+    }
   }
 
   switchBtn.addEventListener('click', async () => {
@@ -50,5 +69,5 @@ export function initApp() {
     });
   });
 
-  startCamera();
+  initCameraWithRetry();
 }
