@@ -56,4 +56,12 @@ export function initApp() {
 
     tg?.HapticFeedback?.impactOccurred('medium');
 
-    tg?.sho
+    tg?.showPopup({
+      title: 'Снимок готов 📸',
+      message: 'Следующий шаг — AI обработка',
+      buttons: [{ type: 'ok' }]
+    });
+
+    console.log('PHOTO:', photo);
+  };
+}
