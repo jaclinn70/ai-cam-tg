@@ -13,6 +13,7 @@ export function initApp() {
   app.innerHTML = `
     <div class="camera-root">
       <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas" hidden></canvas>
 
       <div class="controls">
         <button id="shoot">●</button>
@@ -21,6 +22,8 @@ export function initApp() {
   `;
 
   const video = document.getElementById('video') as HTMLVideoElement;
+  const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+  const shootBtn = document.getElementById('shoot') as HTMLButtonElement;
 
   navigator.mediaDevices.getUserMedia({
     video: {
@@ -30,13 +33,27 @@ export function initApp() {
       height: { ideal: 1920 }
     },
     audio: false
-  })
-  .then(stream => {
+  }).then(stream => {
     video.srcObject = stream;
     video.play();
-  })
-  .catch(err => {
+  }).catch(() => {
     alert('Нет доступа к камере');
-    console.error(err);
   });
-}
+
+  shootBtn.onclick = () => {
+    const w = 1080;
+    const h = 1920;
+
+    canvas.width = w;
+    canvas.height = h;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, w, h);
+
+    const photo = canvas.toDataURL('image/jpeg', 0.95);
+
+    tg?.HapticFeedback?.impactOccurred('medium');
+
+    tg?.sho
