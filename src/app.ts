@@ -49,7 +49,6 @@ export function initApp() {
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode,
-        aspectRatio: 9 / 16,
         width: { ideal: 1080 },
         height: { ideal: 1920 }
       },
@@ -57,7 +56,13 @@ export function initApp() {
     });
 
     video.srcObject = stream;
-    await video.play();
+
+    return new Promise<void>(resolve => {
+      video.onloadedmetadata = async () => {
+        await video.play();
+        resolve();
+      };
+    });
   }
 
   // 🔄 Переключение камеры
@@ -67,20 +72,41 @@ export function initApp() {
     tg?.HapticFeedback?.impactOccurred('light');
   };
 
-  // 📸 СНИМОК
+  // 📸 СНИМОК — ЖЁСТКО 9:16
   shotBtn.onclick = () => {
+    if (!video.videoWidth || !video.videoHeight) {
+      alert('Камера ещё не готова');
+      return;
+    }
+
+    const targetRatio = 9 / 16;
     const vw = video.videoWidth;
     const vh = video.videoHeight;
+    const videoRatio = vw / vh;
 
-    canvas.width = vw;
-    canvas.height = vh;
+    let sx = 0, sy = 0, sw = vw, sh = vh;
+
+    if (videoRatio > targetRatio) {
+      // обрезаем по ширине
+      sh = vh;
+      sw = vh * targetRatio;
+      sx = (vw - sw) / 2;
+    } else {
+      // обрезаем по высоте
+      sw = vw;
+      sh = vw / targetRatio;
+      sy = (vh - sh) / 2;
+    }
+
+    canvas.width = 1080;
+    canvas.height = 1920;
 
     const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(video, 0, 0, vw, vh);
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 1080, 1920);
 
     const imageBase64 = canvas.toDataURL('image/jpeg', 0.95);
 
-    console.log('📸 SNAPSHOT READY', imageBase64.slice(0, 50));
+    console.log('📸 SNAPSHOT OK', imageBase64.slice(0, 80));
 
     tg?.showAlert?.('Снимок готов 📸');
     tg?.HapticFeedback?.impactOccurred('medium');
