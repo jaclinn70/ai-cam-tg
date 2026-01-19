@@ -15,13 +15,11 @@ export function initApp() {
   const app = document.getElementById('app')!;
   app.innerHTML = `
     <div class="camera-shell">
-      <div class="camera-frame">
-        <video id="video" autoplay playsinline muted></video>
+      <video id="video" autoplay playsinline muted></video>
 
-        <div class="controls">
-          <button id="switch" class="btn">🔄</button>
-          <button id="shot" class="btn capture"></button>
-        </div>
+      <div class="controls">
+        <button id="switch" class="btn">🔄</button>
+        <button id="shot" class="btn capture"></button>
       </div>
     </div>
   `;
@@ -50,25 +48,17 @@ export function initApp() {
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: { exact: facingMode },
-          width: { ideal: 1080 },
-          height: { ideal: 1920 },
-          frameRate: { ideal: 30 }
+          facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         },
         audio: false
       });
 
       video.srcObject = stream;
       await video.play();
-    } catch (err) {
-      // 🔥 fallback — если environment не дался
-      if (facingMode === 'environment') {
-        facingMode = 'user';
-        await startCamera();
-        tg?.showAlert('Задняя камера недоступна');
-      } else {
-        tg?.showAlert('Camera access error');
-      }
+    } catch {
+      tg?.showAlert('Camera access error');
     }
   }
 
@@ -84,19 +74,39 @@ export function initApp() {
       return;
     }
 
+    // 🎯 ГАРАНТИРОВАННЫЙ 9:16 КРОП
+    const targetW = 1080;
+    const targetH = 1920;
+    const targetRatio = targetW / targetH;
+
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    const videoRatio = vw / vh;
+
+    let sx = 0, sy = 0, sw = vw, sh = vh;
+
+    if (videoRatio > targetRatio) {
+      // видео шире — режем по бокам
+      sw = vh * targetRatio;
+      sx = (vw - sw) / 2;
+    } else {
+      // видео выше — режем сверху/снизу
+      sh = vw / targetRatio;
+      sy = (vh - sh) / 2;
+    }
+
     const canvas = document.createElement('canvas');
-    canvas.width = 1080;
-    canvas.height = 1920;
+    canvas.width = targetW;
+    canvas.height = targetH;
 
     const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, targetW, targetH);
 
-    const imageBase64 = canvas.toDataURL('image/jpeg', 0.95);
-    console.log('PHOTO READY', imageBase64);
+    const photo = canvas.toDataURL('image/jpeg', 0.95);
+    console.log('PHOTO READY', photo);
 
     tg?.HapticFeedback?.impactOccurred('medium');
   };
 
   startCamera();
 }
-
