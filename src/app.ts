@@ -6,116 +6,106 @@ declare global {
   }
 }
 
-const tg = window.Telegram?.WebApp;
+export function initApp() {
+  const tg = window.Telegram?.WebApp;
 
-/* ---------- STATE ---------- */
-let currentMode: 'selfie' | 'object' = 'selfie';
-let currentStream: MediaStream | null = null;
+  let currentMode: 'selfie' | 'object' = 'selfie';
+  let currentStream: MediaStream | null = null;
 
-/* ---------- DOM ---------- */
-const app = document.getElementById('app')!;
+  const app = document.getElementById('app')!;
+  app.innerHTML = `
+    <div class="container">
+      <header>
+        <h1>AI Camera</h1>
+        <div class="modes">
+          <button id="selfieBtn" class="active">🤳 Селфи</button>
+          <button id="objectBtn">📦 Объект</button>
+        </div>
+      </header>
 
-/* ---------- UI ---------- */
-app.innerHTML = `
-  <div class="container">
-    <header>
-      <h1>AI Camera</h1>
-      <div class="modes">
-        <button id="selfieBtn" class="active">🤳 Селфи</button>
-        <button id="objectBtn">📦 Объект</button>
-      </div>
-    </header>
+      <main>
+        <video id="video" autoplay playsinline muted></video>
 
-    <main>
-      <video id="video" autoplay playsinline muted></video>
+        <input
+          id="fileInput"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style="display:none"
+        />
 
-      <input
-        id="fileInput"
-        type="file"
-        accept="image/*"
-        capture="environment"
-        style="display:none"
-      />
+        <canvas id="canvas" style="display:none"></canvas>
+      </main>
 
-      <canvas id="canvas" style="display:none"></canvas>
-    </main>
+      <footer>
+        <button id="shotBtn">🔴</button>
+      </footer>
+    </div>
+  `;
 
-    <footer>
-      <button id="shotBtn">🔴</button>
-    </footer>
-  </div>
-`;
+  const video = document.getElementById('video') as HTMLVideoElement;
+  const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+  const fileInput = document.getElementById('fileInput') as HTMLInputElement;
 
-/* ---------- ELEMENTS ---------- */
-const video = document.getElementById('video') as HTMLVideoElement;
-const canvas = document.getElementById('canvas') as HTMLCanvasElement;
-const fileInput = document.getElementById('fileInput') as HTMLInputElement;
+  const selfieBtn = document.getElementById('selfieBtn')!;
+  const objectBtn = document.getElementById('objectBtn')!;
+  const shotBtn = document.getElementById('shotBtn')!;
 
-const selfieBtn = document.getElementById('selfieBtn')!;
-const objectBtn = document.getElementById('objectBtn')!;
-const shotBtn = document.getElementById('shotBtn')!;
-
-/* ---------- INIT TG ---------- */
-if (tg) {
-  tg.ready();
-  tg.expand();
-  tg.setBackgroundColor('#000000');
-  tg.setHeaderColor('#000000');
-}
-
-/* ---------- CAMERA ---------- */
-async function stopCamera() {
-  if (currentStream) {
-    currentStream.getTracks().forEach(t => t.stop());
-    currentStream = null;
+  if (tg) {
+    tg.ready();
+    tg.expand();
+    tg.setBackgroundColor('#000000');
+    tg.setHeaderColor('#000000');
   }
-}
 
-async function startSelfieCamera() {
-  await stopCamera();
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: 'user',
-        width: { ideal: 1080 },
-        height: { ideal: 1920 }
-      },
-      audio: false
-    });
-
-    currentStream = stream;
-    video.srcObject = stream;
-    video.style.display = 'block';
-  } catch (e) {
-    alert('Не удалось открыть фронтальную камеру');
+  async function stopCamera() {
+    if (currentStream) {
+      currentStream.getTracks().forEach(t => t.stop());
+      currentStream = null;
+    }
   }
-}
 
-/* ---------- MODE SWITCH ---------- */
-selfieBtn.onclick = async () => {
-  currentMode = 'selfie';
-  selfieBtn.classList.add('active');
-  objectBtn.classList.remove('active');
-  await startSelfieCamera();
-};
+  async function startSelfieCamera() {
+    await stopCamera();
 
-objectBtn.onclick = async () => {
-  currentMode = 'object';
-  selfieBtn.classList.remove('active');
-  objectBtn.classList.add('active');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 1080 },
+          height: { ideal: 1920 }
+        },
+        audio: false
+      });
 
-  await stopCamera();
-  video.style.display = 'none';
+      currentStream = stream;
+      video.srcObject = stream;
+      video.style.display = 'block';
+    } catch {
+      alert('Не удалось открыть фронтальную камеру');
+    }
+  }
 
-  // Открываем СИСТЕМНУЮ камеру (заднюю)
-  fileInput.click();
-};
+  selfieBtn.onclick = async () => {
+    currentMode = 'selfie';
+    selfieBtn.classList.add('active');
+    objectBtn.classList.remove('active');
+    await startSelfieCamera();
+  };
 
-/* ---------- SHOT ---------- */
-shotBtn.onclick = async () => {
-  if (currentMode === 'selfie') {
-    if (!currentStream) return;
+  objectBtn.onclick = async () => {
+    currentMode = 'object';
+    selfieBtn.classList.remove('active');
+    objectBtn.classList.add('active');
+
+    await stopCamera();
+    video.style.display = 'none';
+
+    fileInput.click();
+  };
+
+  shotBtn.onclick = () => {
+    if (currentMode !== 'selfie' || !currentStream) return;
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -127,23 +117,19 @@ shotBtn.onclick = async () => {
     console.log('SELFIE IMAGE', img);
 
     tg?.HapticFeedback?.impactOccurred('medium');
-  }
-};
-
-/* ---------- FILE INPUT ---------- */
-fileInput.onchange = () => {
-  const file = fileInput.files?.[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    const img = reader.result as string;
-    console.log('OBJECT IMAGE', img);
-
-    tg?.HapticFeedback?.impactOccurred('medium');
   };
-  reader.readAsDataURL(file);
-};
 
-/* ---------- START ---------- */
-startSelfieCamera();
+  fileInput.onchange = () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      console.log('OBJECT IMAGE', reader.result);
+      tg?.HapticFeedback?.impactOccurred('medium');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  startSelfieCamera();
+}
