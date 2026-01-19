@@ -21,8 +21,8 @@ export function initApp() {
   const captureBtn = document.getElementById('capture')!;
 
   let stream: MediaStream | null = null;
-  let facingMode: 'user' | 'environment' = 'environment';
-  let initialized = false;
+  let facingMode: 'user' | 'environment' = 'user'; // 🔑 СТАРТ С ФРОНТАЛКИ
+  let started = false;
 
   async function startCamera() {
     try {
@@ -36,24 +36,22 @@ export function initApp() {
       });
 
       video.srcObject = stream;
-
       await video.play();
     } catch (e) {
       console.error('Camera error', e);
     }
   }
 
-  // 🔑 FIX for Telegram Mobile
-  async function initCameraWithRetry() {
+  async function smartStart() {
+    // 1️⃣ стартуем фронталку
     await startCamera();
 
-    // Telegram Mobile часто требует повтор
-    if (!initialized) {
-      initialized = true;
-      setTimeout(() => {
-        startCamera();
-      }, 300);
-    }
+    // 2️⃣ после успешного старта — переключаемся на заднюю
+    setTimeout(async () => {
+      facingMode = 'environment';
+      await startCamera();
+      started = true;
+    }, 300);
   }
 
   switchBtn.addEventListener('click', async () => {
@@ -69,5 +67,5 @@ export function initApp() {
     });
   });
 
-  initCameraWithRetry();
+  smartStart();
 }
