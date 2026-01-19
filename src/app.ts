@@ -9,24 +9,23 @@ declare global {
 export function initApp() {
   const tg = window.Telegram?.WebApp;
 
-  let facingMode: 'user' | 'environment' = 'user';
+  let facingMode: 'user' | 'environment' = 'environment';
   let stream: MediaStream | null = null;
 
   const app = document.getElementById('app')!;
   app.innerHTML = `
-    <div class="root">
-      <div class="camera-frame">
-        <video id="video" autoplay playsinline muted></video>
-      </div>
+    <video id="video" autoplay playsinline muted></video>
 
-      <div class="controls">
-        <button id="switch">🔄</button>
-        <button id="shot">🔴</button>
-      </div>
+    <div class="controls">
+      <button id="switch" class="btn">🔄</button>
+      <button id="shot" class="btn capture"></button>
     </div>
+
+    <canvas id="canvas" style="display:none"></canvas>
   `;
 
   const video = document.getElementById('video') as HTMLVideoElement;
+  const canvas = document.getElementById('canvas') as HTMLCanvasElement;
   const switchBtn = document.getElementById('switch')!;
   const shotBtn = document.getElementById('shot')!;
 
@@ -47,70 +46,47 @@ export function initApp() {
   async function startCamera() {
     await stopCamera();
 
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      });
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode,
+        aspectRatio: 9 / 16,
+        width: { ideal: 1080 },
+        height: { ideal: 1920 }
+      },
+      audio: false
+    });
 
-      video.srcObject = stream;
-      await video.play();
-    } catch (e) {
-      alert('Camera error');
-    }
+    video.srcObject = stream;
+    await video.play();
   }
 
+  // 🔄 Переключение камеры
   switchBtn.onclick = async () => {
     facingMode = facingMode === 'user' ? 'environment' : 'user';
     await startCamera();
     tg?.HapticFeedback?.impactOccurred('light');
   };
 
-  shotBtn.onclick = async () => {
-    tg?.HapticFeedback?.impactOccurred('medium');
+  // 📸 СНИМОК
+  shotBtn.onclick = () => {
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
 
-    // 🔹 Делаем снимок с видео
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = vw;
+    canvas.height = vh;
 
     const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, vw, vh);
 
-    const imageBase64 = canvas.toDataURL('image/jpeg', 0.9);
+    const imageBase64 = canvas.toDataURL('image/jpeg', 0.95);
 
-    // 🔹 Пример вызова Gemini
-    const result = await runGemini(
-      imageBase64,
-      'Сделай художественную обработку фото'
-    );
+    console.log('📸 SNAPSHOT READY', imageBase64.slice(0, 50));
 
-    console.log('Gemini result:', result);
+    tg?.showAlert?.('Снимок готов 📸');
+    tg?.HapticFeedback?.impactOccurred('medium');
+
+    // 👉 дальше сюда пойдёт Gemini
   };
 
   startCamera();
-}
-
-/* =====================================================
-   🔮 Gemini API — клиентская функция
-   ===================================================== */
-
-async function runGemini(imageBase64: string, prompt: string) {
-  const res = await fetch('/api/gemini', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      imageBase64,
-      prompt,
-    }),
-  });
-
-  const data = await res.json();
-  return data;
 }
