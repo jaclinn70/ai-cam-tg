@@ -1,10 +1,13 @@
 export function initApp() {
   const app = document.getElementById('app')!;
   app.innerHTML = `
-    <video id="video" autoplay playsinline muted></video>
+    <div id="container">
+      <video id="video" playsinline muted></video>
 
-    <div class="controls">
-      <button id="switch">🔄</button>
+      <div class="controls">
+        <button id="start">▶️ Включить камеру</button>
+        <button id="switch" disabled>🔄</button>
+      </div>
     </div>
   `;
 
@@ -14,42 +17,40 @@ export function initApp() {
   tg?.setBackgroundColor('#000000');
 
   const video = document.getElementById('video') as HTMLVideoElement;
+  const startBtn = document.getElementById('start')!;
   const switchBtn = document.getElementById('switch')!;
 
   let stream: MediaStream | null = null;
   let cameras: MediaDeviceInfo[] = [];
-  let currentCamera = 0;
+  let currentIndex = 0;
 
-  async function startInitialCamera() {
-    // 🔑 ВСЕГДА СТАРТУЕМ С ФРОНТАЛКИ
+  async function startCamera() {
+    // 🔑 ПЕРВЫЙ ЗАПУСК — ТОЛЬКО ПО КЛИКУ
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user' },
+      video: true,
       audio: false
     });
 
     video.srcObject = stream;
     await video.play();
 
-    // 🔑 ПОСЛЕ РАЗРЕШЕНИЯ МОЖНО ПОЛУЧИТЬ СПИСОК КАМЕР
     const devices = await navigator.mediaDevices.enumerateDevices();
     cameras = devices.filter(d => d.kind === 'videoinput');
+
+    switchBtn.removeAttribute('disabled');
+    startBtn.remove();
   }
 
   async function switchCamera() {
     if (!cameras.length) return;
 
-    currentCamera = (currentCamera + 1) % cameras.length;
+    currentIndex = (currentIndex + 1) % cameras.length;
 
-    // ⚠️ НЕ ОСТАНАВЛИВАЕМ ВИДЕО, ТОЛЬКО МЕНЯЕМ TRACK
+    // ❗️ВАЖНО: getUserMedia ВНУТРИ КЛИКА
     const newStream = await navigator.mediaDevices.getUserMedia({
-      video: { deviceId: { exact: cameras[currentCamera].deviceId } },
+      video: { deviceId: { exact: cameras[currentIndex].deviceId } },
       audio: false
     });
-
-    const newTrack = newStream.getVideoTracks()[0];
-
-    const sender = (stream as any)
-      .getVideoTracks()[0];
 
     stream?.getTracks().forEach(t => t.stop());
     stream = newStream;
@@ -58,7 +59,7 @@ export function initApp() {
     await video.play();
   }
 
+  startBtn.addEventListener('click', startCamera);
   switchBtn.addEventListener('click', switchCamera);
-
-  startInitialCamera();
 }
+
