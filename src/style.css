@@ -5,7 +5,7 @@
   box-sizing: border-box;
 }
 
-/* BASE */
+/* ROOT */
 html, body {
   width: 100%;
   height: 100%;
@@ -14,76 +14,65 @@ html, body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* ROOT */
 #app {
   width: 100%;
   height: 100%;
-  background: black;
 }
 
-/* APP LAYOUT */
-.root {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  background: black;
+/* CAMERA SHELL — центрируем */
+.camera-shell {
+  width: 100%;
+  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
+  background: black;
 }
 
-/* CAMERA FRAME — ВИЗУАЛЬНЫЙ 9:16 */
+/* CAMERA FRAME — ФИЗИЧЕСКИЙ 9:16 */
 .camera-frame {
-  position: relative;
   height: 100%;
   aspect-ratio: 9 / 16;
-  background: black;
+  position: relative;
   overflow: hidden;
+  background: black;
 }
 
 /* VIDEO */
-video {
-  position: absolute;
-  inset: 0;
+.camera-frame video {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  background: black;
 }
 
 /* CONTROLS */
 .controls {
   position: absolute;
   bottom: 32px;
-  left: 0;
-  right: 0;
+  width: 100%;
   display: flex;
   justify-content: center;
-  gap: 32px;
+  gap: 48px;
   z-index: 10;
 }
 
-/* BUTTONS */
-button {
+/* BUTTON BASE */
+.btn {
   width: 64px;
   height: 64px;
   border-radius: 50%;
   border: none;
-  font-size: 24px;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(12px);
   color: white;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  cursor: pointer;
-}
-
-button:active {
-  transform: scale(0.95);
+  font-size: 24px;
 }
 
 /* CAPTURE BUTTON */
-#shot {
-  width: 80px;
-  height: 80px;
-  background: red;
+.capture {
+  width: 78px;
+  height: 78px;
+  background: rgba(255,255,255,0.95);
+  border: 4px solid rgba(0,255,255,0.7);
+  box-shadow: 0 0 18px rgba(0,255,255,0.9);
 }
