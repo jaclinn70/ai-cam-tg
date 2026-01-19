@@ -9,127 +9,71 @@ declare global {
 export function initApp() {
   const tg = window.Telegram?.WebApp;
 
-  let currentMode: 'selfie' | 'object' = 'selfie';
-  let currentStream: MediaStream | null = null;
+  let facingMode: 'user' | 'environment' = 'user';
+  let stream: MediaStream | null = null;
 
   const app = document.getElementById('app')!;
   app.innerHTML = `
-    <div class="container">
-      <header>
-        <h1>AI Camera</h1>
-        <div class="modes">
-          <button id="selfieBtn" class="active">🤳 Селфи</button>
-          <button id="objectBtn">📦 Объект</button>
-        </div>
-      </header>
-
-      <main>
+    <div class="root">
+      <div class="camera-frame">
         <video id="video" autoplay playsinline muted></video>
+      </div>
 
-        <input
-          id="fileInput"
-          type="file"
-          accept="image/*"
-          capture="environment"
-          style="display:none"
-        />
-
-        <canvas id="canvas" style="display:none"></canvas>
-      </main>
-
-      <footer>
-        <button id="shotBtn">🔴</button>
-      </footer>
+      <div class="controls">
+        <button id="switch">🔄</button>
+        <button id="shot">🔴</button>
+      </div>
     </div>
   `;
 
   const video = document.getElementById('video') as HTMLVideoElement;
-  const canvas = document.getElementById('canvas') as HTMLCanvasElement;
-  const fileInput = document.getElementById('fileInput') as HTMLInputElement;
-
-  const selfieBtn = document.getElementById('selfieBtn')!;
-  const objectBtn = document.getElementById('objectBtn')!;
-  const shotBtn = document.getElementById('shotBtn')!;
+  const switchBtn = document.getElementById('switch')!;
+  const shotBtn = document.getElementById('shot')!;
 
   if (tg) {
     tg.ready();
     tg.expand();
-    tg.setBackgroundColor('#000000');
-    tg.setHeaderColor('#000000');
+    tg.setBackgroundColor('#000');
+    tg.setHeaderColor('#000');
   }
 
   async function stopCamera() {
-    if (currentStream) {
-      currentStream.getTracks().forEach(t => t.stop());
-      currentStream = null;
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
     }
   }
 
-  async function startSelfieCamera() {
+  async function startCamera() {
     await stopCamera();
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: 'user',
-          width: { ideal: 1080 },
-          height: { ideal: 1920 }
+          facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         },
         audio: false
       });
 
-      currentStream = stream;
       video.srcObject = stream;
-      video.style.display = 'block';
-    } catch {
-      alert('Не удалось открыть фронтальную камеру');
+      await video.play();
+    } catch (e) {
+      alert('Camera error');
     }
   }
 
-  selfieBtn.onclick = async () => {
-    currentMode = 'selfie';
-    selfieBtn.classList.add('active');
-    objectBtn.classList.remove('active');
-    await startSelfieCamera();
-  };
-
-  objectBtn.onclick = async () => {
-    currentMode = 'object';
-    selfieBtn.classList.remove('active');
-    objectBtn.classList.add('active');
-
-    await stopCamera();
-    video.style.display = 'none';
-
-    fileInput.click();
+  switchBtn.onclick = async () => {
+    facingMode = facingMode === 'user' ? 'environment' : 'user';
+    await startCamera();
+    tg?.HapticFeedback?.impactOccurred('light');
   };
 
   shotBtn.onclick = () => {
-    if (currentMode !== 'selfie' || !currentStream) return;
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(video, 0, 0);
-
-    const img = canvas.toDataURL('image/jpeg', 0.95);
-    console.log('SELFIE IMAGE', img);
-
     tg?.HapticFeedback?.impactOccurred('medium');
+    console.log('SHOT');
   };
 
-  fileInput.onchange = () => {
-    const file = fileInput.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      console.log('OBJECT IMAGE', reader.result);
-      tg?.HapticFeedback?.impactOccurred('medium');
-    };
-    reader.readAsDataURL(file);
-  };
-
-  startSelfieCamera();
+  startCamera();
 }
