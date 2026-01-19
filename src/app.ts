@@ -70,10 +70,47 @@ export function initApp() {
     tg?.HapticFeedback?.impactOccurred('light');
   };
 
-  shotBtn.onclick = () => {
+  shotBtn.onclick = async () => {
     tg?.HapticFeedback?.impactOccurred('medium');
-    console.log('SHOT');
+
+    // 🔹 Делаем снимок с видео
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const imageBase64 = canvas.toDataURL('image/jpeg', 0.9);
+
+    // 🔹 Пример вызова Gemini
+    const result = await runGemini(
+      imageBase64,
+      'Сделай художественную обработку фото'
+    );
+
+    console.log('Gemini result:', result);
   };
 
   startCamera();
+}
+
+/* =====================================================
+   🔮 Gemini API — клиентская функция
+   ===================================================== */
+
+async function runGemini(imageBase64: string, prompt: string) {
+  const res = await fetch('/api/gemini', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      imageBase64,
+      prompt,
+    }),
+  });
+
+  const data = await res.json();
+  return data;
 }
