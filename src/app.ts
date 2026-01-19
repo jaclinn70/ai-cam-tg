@@ -4,68 +4,61 @@ export function initApp() {
     <video id="video" autoplay playsinline muted></video>
 
     <div class="controls">
-      <button id="switch" class="btn">🔄</button>
-      <button id="capture" class="btn capture"></button>
+      <button id="switch">🔄</button>
     </div>
   `;
 
   const tg = (window as any).Telegram?.WebApp;
-  if (tg) {
-    tg.ready();
-    tg.expand();
-    tg.setBackgroundColor('#000000');
-  }
+  tg?.ready();
+  tg?.expand();
+  tg?.setBackgroundColor('#000000');
 
   const video = document.getElementById('video') as HTMLVideoElement;
   const switchBtn = document.getElementById('switch')!;
-  const captureBtn = document.getElementById('capture')!;
 
   let stream: MediaStream | null = null;
-  let facingMode: 'user' | 'environment' = 'user'; // 🔑 СТАРТ С ФРОНТАЛКИ
-  let started = false;
+  let cameras: MediaDeviceInfo[] = [];
+  let currentCamera = 0;
 
-  async function startCamera() {
-    try {
-      if (stream) {
-        stream.getTracks().forEach(t => t.stop());
-      }
-
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode },
-        audio: false
-      });
-
-      video.srcObject = stream;
-      await video.play();
-    } catch (e) {
-      console.error('Camera error', e);
-    }
-  }
-
-  async function smartStart() {
-    // 1️⃣ стартуем фронталку
-    await startCamera();
-
-    // 2️⃣ после успешного старта — переключаемся на заднюю
-    setTimeout(async () => {
-      facingMode = 'environment';
-      await startCamera();
-      started = true;
-    }, 300);
-  }
-
-  switchBtn.addEventListener('click', async () => {
-    facingMode = facingMode === 'user' ? 'environment' : 'user';
-    await startCamera();
-  });
-
-  captureBtn.addEventListener('click', () => {
-    tg?.showPopup({
-      title: 'Снимок готов 📸',
-      message: 'Следующий шаг — AI обработка',
-      buttons: [{ type: 'ok' }]
+  async function startInitialCamera() {
+    // 🔑 ВСЕГДА СТАРТУЕМ С ФРОНТАЛКИ
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user' },
+      audio: false
     });
-  });
 
-  smartStart();
+    video.srcObject = stream;
+    await video.play();
+
+    // 🔑 ПОСЛЕ РАЗРЕШЕНИЯ МОЖНО ПОЛУЧИТЬ СПИСОК КАМЕР
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    cameras = devices.filter(d => d.kind === 'videoinput');
+  }
+
+  async function switchCamera() {
+    if (!cameras.length) return;
+
+    currentCamera = (currentCamera + 1) % cameras.length;
+
+    // ⚠️ НЕ ОСТАНАВЛИВАЕМ ВИДЕО, ТОЛЬКО МЕНЯЕМ TRACK
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: cameras[currentCamera].deviceId } },
+      audio: false
+    });
+
+    const newTrack = newStream.getVideoTracks()[0];
+
+    const sender = (stream as any)
+      .getVideoTracks()[0];
+
+    stream?.getTracks().forEach(t => t.stop());
+    stream = newStream;
+
+    video.srcObject = stream;
+    await video.play();
+  }
+
+  switchBtn.addEventListener('click', switchCamera);
+
+  startInitialCamera();
 }
