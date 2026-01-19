@@ -16,6 +16,7 @@ export function initApp() {
   app.innerHTML = `
     <div class="camera-shell">
       <video id="video" autoplay playsinline muted></video>
+      <img id="preview" />
 
       <div class="controls">
         <button id="switch" class="btn">🔄</button>
@@ -25,6 +26,7 @@ export function initApp() {
   `;
 
   const video = document.getElementById('video') as HTMLVideoElement;
+  const preview = document.getElementById('preview') as HTMLImageElement;
   const switchBtn = document.getElementById('switch')!;
   const shotBtn = document.getElementById('shot')!;
 
@@ -69,28 +71,22 @@ export function initApp() {
   };
 
   shotBtn.onclick = () => {
-    if (!video.videoWidth || !video.videoHeight) {
-      tg?.showAlert('Камера не готова');
-      return;
-    }
+    if (!video.videoWidth) return;
 
-    // 🎯 ГАРАНТИРОВАННЫЙ 9:16 КРОП
     const targetW = 1080;
     const targetH = 1920;
     const targetRatio = targetW / targetH;
 
     const vw = video.videoWidth;
     const vh = video.videoHeight;
-    const videoRatio = vw / vh;
+    const vr = vw / vh;
 
     let sx = 0, sy = 0, sw = vw, sh = vh;
 
-    if (videoRatio > targetRatio) {
-      // видео шире — режем по бокам
+    if (vr > targetRatio) {
       sw = vh * targetRatio;
       sx = (vw - sw) / 2;
     } else {
-      // видео выше — режем сверху/снизу
       sh = vw / targetRatio;
       sy = (vh - sh) / 2;
     }
@@ -103,7 +99,9 @@ export function initApp() {
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, targetW, targetH);
 
     const photo = canvas.toDataURL('image/jpeg', 0.95);
-    console.log('PHOTO READY', photo);
+
+    preview.src = photo;
+    preview.style.display = 'block';
 
     tg?.HapticFeedback?.impactOccurred('medium');
   };
