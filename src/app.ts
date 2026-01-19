@@ -9,7 +9,7 @@ declare global {
 export function initApp() {
   const tg = window.Telegram?.WebApp;
 
-  let facingMode: 'user' | 'environment' = 'environment';
+  let facingMode: 'user' | 'environment' = 'user';
   let stream: MediaStream | null = null;
 
   const app = document.getElementById('app')!;
@@ -50,15 +50,25 @@ export function initApp() {
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode
+          facingMode: { exact: facingMode },
+          width: { ideal: 1080 },
+          height: { ideal: 1920 },
+          frameRate: { ideal: 30 }
         },
         audio: false
       });
 
       video.srcObject = stream;
       await video.play();
-    } catch (e) {
-      alert('Camera access error');
+    } catch (err) {
+      // 🔥 fallback — если environment не дался
+      if (facingMode === 'environment') {
+        facingMode = 'user';
+        await startCamera();
+        tg?.showAlert('Задняя камера недоступна');
+      } else {
+        tg?.showAlert('Camera access error');
+      }
     }
   }
 
@@ -69,7 +79,10 @@ export function initApp() {
   };
 
   shotBtn.onclick = () => {
-    if (!video.videoWidth) return;
+    if (!video.videoWidth || !video.videoHeight) {
+      tg?.showAlert('Камера не готова');
+      return;
+    }
 
     const canvas = document.createElement('canvas');
     canvas.width = 1080;
@@ -78,11 +91,12 @@ export function initApp() {
     const ctx = canvas.getContext('2d')!;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const image = canvas.toDataURL('image/jpeg', 0.95);
-    console.log('PHOTO:', image);
+    const imageBase64 = canvas.toDataURL('image/jpeg', 0.95);
+    console.log('PHOTO READY', imageBase64);
 
     tg?.HapticFeedback?.impactOccurred('medium');
   };
 
   startCamera();
 }
+
